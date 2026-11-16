@@ -3179,6 +3179,9 @@ html body #archive-shell .text-home:has(#cover-layout:not([hidden])){padding:0!i
       });
     }
 
+    let historyRestoring = false;
+    function currentPortfolioView(){return {portfolio:true,view:state.activeProjectId?'detail':state.section==='resume'?'resume':document.getElementById('index-layout').hidden?'home':'index',projectId:state.activeProjectId||null,category:window.textHomeCategory||'all',indexView:window.projectIndexView||'gallery',scrollY:window.scrollY};}
+    function savePortfolioHistory(){if(historyRestoring)return;const before=history.state;if(before&&before.portfolio)history.replaceState({...before,scrollY:window.scrollY},'');const next=currentPortfolioView();if(!before||before.view!==next.view||before.projectId!==next.projectId||before.category!==next.category)history.pushState(next,'');}
     function openDetailView(projectId) {
       const p = projects.find(item => item.id === projectId);
       if (!p) return;
@@ -3245,6 +3248,7 @@ html body #archive-shell .text-home:has(#cover-layout:not([hidden])){padding:0!i
       document.getElementById('archive-shell').classList.add('hidden');
       document.getElementById('resume-view').classList.add('hidden');
       document.getElementById('detail-view').classList.remove('hidden');
+      savePortfolioHistory();
       window.scrollTo(0, 0);
     }
 
@@ -3347,6 +3351,7 @@ html body #archive-shell .text-home:has(#cover-layout:not([hidden])){padding:0!i
       } else {
         document.getElementById('archive-shell').classList.remove('hidden');
       }
+      savePortfolioHistory();
     }
 
     function openLightbox(idx) {
@@ -3595,23 +3600,26 @@ html body #archive-shell .text-home:has(#cover-layout:not([hidden])){padding:0!i
         document.getElementById('cover-layout').hidden = true;
         document.getElementById('index-layout').hidden = false;
         switchSection(category === 'photography' ? 'photography' : 'architecture');
+        savePortfolioHistory();
         window.scrollTo(0, 0);
       }
       document.getElementById('text-projects').addEventListener('click', () => showIndex('all'));
       document.getElementById('text-architecture').addEventListener('click', () => showIndex('architecture'));
       document.getElementById('text-photography').addEventListener('click', () => showIndex('photography'));
-      document.getElementById('text-about').addEventListener('click', () => switchSection('resume'));
-      document.getElementById('index-about').addEventListener('click', () => switchSection('resume'));
+      document.getElementById('text-about').addEventListener('click', () => {switchSection('resume');savePortfolioHistory()});
+      document.getElementById('index-about').addEventListener('click', () => {switchSection('resume');savePortfolioHistory()});
       document.querySelectorAll('[data-index-category]').forEach(btn => btn.addEventListener('click', () => showIndex(btn.dataset.indexCategory)));
       document.querySelectorAll('[data-index-view]').forEach(btn => btn.addEventListener('click', () => { window.projectIndexView = btn.dataset.indexView; renderTextProjects(); }));
       document.getElementById('btn-explore').addEventListener('click', () => document.getElementById('archive-collection').scrollIntoView({ behavior: 'smooth', block: 'start' }));
       document.getElementById('footer-back-top').addEventListener('click', (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
 
-      document.getElementById('btn-brand-home').addEventListener('click', () => { window.textHomeCategory = ''; document.getElementById('index-layout').hidden = true; document.getElementById('cover-layout').hidden = false; switchSection('architecture'); window.scrollTo(0,0); });
+      document.getElementById('btn-brand-home').addEventListener('click', () => { window.textHomeCategory = ''; document.getElementById('index-layout').hidden = true; document.getElementById('cover-layout').hidden = false; switchSection('architecture'); savePortfolioHistory(); window.scrollTo(0,0); });
       document.querySelectorAll('.nav-section-btn').forEach(btn => {
         btn.addEventListener('click', () => btn.dataset.section === 'resume' ? switchSection('resume') : showIndex(btn.dataset.section));
       });
 
+      history.replaceState(currentPortfolioView(),'');
+      window.addEventListener('popstate', event => {const v=event.state;if(!v||!v.portfolio)return;historyRestoring=true;try{window.projectIndexView=v.indexView||'gallery';window.textHomeCategory=v.category==='all'?'':v.category||'';document.getElementById('index-layout').hidden=v.view==='home';document.getElementById('cover-layout').hidden=v.view!=='home';switchSection(v.view==='resume'?'resume':v.category==='photography'?'photography':'architecture');if(v.view==='detail')openDetailView(v.projectId);requestAnimationFrame(()=>window.scrollTo(0,v.scrollY||0));}finally{historyRestoring=false}});
       const searchInput = document.getElementById('search-input');
       const clearSearchBtn = document.getElementById('btn-clear-search');
       searchInput.addEventListener('input', (e) => {
